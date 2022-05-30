@@ -1,0 +1,89 @@
+This is a write-up of my attempt to break into "Earth" in "The_Planets" series on vulnhub
+
+Link to the boxes page on vulnhub: https://www.vulnhub.com/entry/the-planets-earth,755/
+Box Author: SirFlash
+Box Difficulty: Easy
+
+**This write up is a work in progress. In it's current version I was only able to gain command line access for an un priveleged user. 
+I have not found either of the 2 flags or figured out how to escalate from there. Although attempts have been made. A version of this write up containing screenshots
+will be posted at a later date
+
+Step 1:
+	Run nmap on the target system to identify any open ports, service versions and operating system details we can find
+nmap -sT -sV -O 192.168.56.101/24
+Scan Results:
+⦁	IP address of maching 192.168.56.102
+⦁	OS details: Linux 4.15-5.6, Linux 5.0 -5.4
+⦁	Port 22 is open to ssh using OpenSSH 8.6 (protocal 2.0)
+⦁	Port 80 is open to http using Apache httpd 2.4.51 (Fedora) OpenSSL/1.1.1l 
+⦁	port 443 is open to ssl/http using Apache httpd 2.4.51 ((Fedor) OpenSSL/1.1.1l 
+⦁	MAC Address: 08:00:27:B9:16:0E
+
+Step 2:
+	Visit the apache web server on port 80. I will do so using my firefox web browser. I will also capture some pcap traffic when doing so just incase I get stuck and decide to look at that as well.
+Visiting the Website itself in firefox did not yield great results. on port 80 the SSL request gave an error and on 443 it simply displayed the apache sample page.
+
+Step 3:
+Run dirbuster on the web page against a small wordlist and see what we find. Which wasn't much just some directories and files related to icons that are built into the apache web server. 
+
+Step 4:
+	Next I will run the nikto vulnerability scan to see if that finds anything interesting. 
+	nikto -h 192.168.56.102
+Not sure what is going on with nikto, maybe it's the system i'm trying to run it on, the version of nikto i'm using or something else, it's displaying some information like the server version and a couple of maybe vulnerabilities but the scan itself doesn't seem to want to complete. I ran it for about an hour and decided to call it. The only thing that seems particularly interesting to me is the line 
+"Cookie csrftoken created with out the httponly flag" I'll have to look up if that relates to any vulnerablities I can use to get into the box.
+
+Step 5: 
+	Run enum4linux *the hint in the machines description suggests this what is needed to be done anyway
+enum4linux -U -o 192.168.56.102
+we find an RID Range 500-500, 1000-1050
+A list of known user names: administrator, guest, krbtgt, domain admins, root, bin, none
+Error message that workgroup/domans can't be found
+"Server doesn't allow session using username '', password ''. Aborting remainder of tests
+
+Step 6:
+	Well the last step gave us a list of user names. and port 22 is open. Let's see if they have password login through ssh or if they require a key like they should
+ssh root@192.168.56.102
+It works! well it will let us take guesses at the password. my guesses "toor" "password' and "admin" were denied, but we can now use Hydra to try to crack it.
+
+Step 7:
+hydra 192.168.56.102 -t 4 -l root -P /usr/share/wordlists/rockyou.txt.gz ssh
+Starting with root because sometimes it is that easy. but in this case it wasn't. The scane ran for a while and didn't find the root password so I switched to guest and then to krbtgt. Seems as those this wasn't really going anywhere either.
+
+Step 8: 
+	Going back to nmap to try a more comprehensive scan to seee if I can find anymore data the first one may have middsed
+sudo nmap -A -sS -p- 192.168.56.102
+This provides more or less the same information as the first scan, however this time around I found two DNS server names earth.local, and terratest.earth.local
+using the following 2 commands I added these sever names to the /etc/hosts file
+sudo echo "192.168.56.102 earth.local
+sudo echo" 192.168.56.102 terratest.earth.local
+We are now able to visit these web pages as the host name can now be resolved to the proper IP address.
+
+Step 9: 
+	Navigating over to the webpage we see that they are botht he same. There is a header that says "Earth Secure Messaging Service above an image of Earth. Below that is a text input field labeled "Send your message to earth" with a "message key" field below that, then at the bottom of the page there is a list of previous messages sent which are encrypted/hashed in some way. I copied and output them into a file for now.
+Sending a messag reveals that you also need to input a "key" that the message is then encoded by, except the "key" can be anything, so we will have to do some work to find out what key was used to encode the pre recorded messages. After doing some googling I don't really have much more to go off of with what i've found so far
+
+Step 10.
+	So running dirbuster on the earth.local webpage against the small.txt wordlist we find that thare 3 additional response code 200 directories. the "/", "/admin/" and /admin/login pages should display 
+
+Step 11. 
+Navigating over to the webpages dirbuster found in the previous step we find a login page we don't have any credentials for so now we will repeat step 10 but agains tthe terratest.earth.local webpage. We find 2 code 200 webpages from this scan "/index.html", and "/robots.txt"
+
+Step 12. 
+	The inex.html webpage didn't display, but the robots.txt did, a long list of exenstions that are "Disallowed". However one at the end seems it might possibly be misconfigured. Well just bruteforcing through possible file extentions we find that there is a webpage available "/testingnotes.txt" some pretty key information is obtained from this step. We now know that "terra" was used as a username for the admin login page, XOR encryption is being used, and there is a file called "testdata.txt" which was used to test out the encryption
+
+Step 13. 
+	We will navigate over to the testdata.txt webpage and copy of the message that was displayed, from there we will use cyberchef to decode the "messages" to earth we found earlier. First you want to paste the message to earth in the input field, from there select from hext, with auto as the option, also search for and add XOR to the list. Copy and paste the message from the testdata.txt into the "key" for the XOR calculator, set the text type to UTF8 as that's what the message was displayed in. Click bake. It should ouput the message "earthclimatechangebad4humans" over and over, which would indicate that phrase must be something, like maybe a password.
+
+Step 14.
+	With the user name "terra" and the the potential password "earthclimatechangebad4humans" we can now navigate back over to that admins/login page from before and attempt to login. It works and we are presented with the /admin/ webpage from before. Which is an "Admin Command tool" that allows terra (now us) to run their CLI on "the earth messaging machine"
+
+Step 15. 
+	Just running a few sample commands to see what we can do here. I always start with pwd and ls -a then explore from there.
+
+and according to "pwd" we are in the root directory already.
+ls -a displays quite a few files "autorelabel" "bin" "boot" "dev" "etc" "home" "lib" "lib64" "media" "mnt" "opt" "proc" "root" "run" "sbin" "srv" "sys" "tmp" "usr" "var"
+running file root reveals that the root file is actually a directory. This leaves us with a few options on where to go from here. We can attempt to explore this root directory, we can explore the /etc/ directory and see if we can find things like a list of users/sudoers or We can attempt to get the contents /etc/shadow and /etc/passwd files and use john to crack some passwords
+
+Step 16
+	Check out the root directory ...and it would appear we can't change directories. But that isn't the end, we can still explore. Although there doesn't appear to be a whole lot in the /root and /home but running ls -a /etc reveals quite a lot of files. One thing in particular we are able to do here is cat /etc/passwd I have copied the data to a file but with out the /etc/shadow file it maybe kind of useless
+There is really kind of a lot to just look through here to see if there is anything interesting. Most of what I have tired has not had great results 
