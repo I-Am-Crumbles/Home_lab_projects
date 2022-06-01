@@ -1,0 +1,57 @@
+Hack the Box 
+Machine: Explosion
+Part of the Starting Point Tier 0 series
+Difficulty: Very Easy
+**Google Doc link containing screenshots to follow**
+
+
+Box questions and answers
+Q1: What does the 3-letter acronym RDP stand for?
+A1: Remote Desktop Protocol
+
+Q2: What is a 3-letter acronym that refers to interaction with the host through a command line interface?
+A2: CLI
+
+Q3: What is a 3-letter acronym for graphical user interface interactions?
+A3: GUI
+
+Q4: What is the name of an old remote access tool that came without encryption by default?
+A4: telnet
+
+Q5: What is the concept used to verify the identity of the remote host with SSH connections?
+A5: public-key cryptography
+
+Q6: What is the name of the tool that we can use to initiate a desktop projection to our host using the terminal?
+A6: xfreerdp
+
+Q7: What is the name of the service running on port 3389 TCP?
+A7: ms-wbt-server
+
+Q8: What is the switched used to specify the taret host's IP address when using xfreerdp?
+Q8: /v:
+
+Q9: Submit root flag:
+Q9: 951fa96d7830c451b536be5a6be008a0
+
+Steps to solve
+
+Based on the questions about this machine it is clearly built around using xfreerdp to gain a foothold onto the system
+
+Step1: 
+  Run nmap to find any open ports that have services and version information running on them.
+  nmap -sV <target_IP>
+  We find
+    135/tcp, open, msrpc
+    139/tcp, open, netbios-ssn
+    445/tcp, open, microsoft-ds?
+    3389/tcp, open, mswbt-server -Answer to Q7
+    and that the OS is likely windows
+    
+ Step2: 
+  Since the lesson of the machine is about RDP and sepcifically the use of the tool xfreerdp we will use the switch we found earlier using the IP address for the target machine as the argument.
+  This will prompt us asking for a user name. Since we don't have a user name we will try basics like "user" "admin" administrator" and the like and just see what happens.
+  Entering the user name administrator prompts us for a password, after a few guesses such as "password" "psswd" "admin" the solution was discovered. 
+  Simplly press enter when prompted for a password, leaving the field blank, will grant a Remote Desktop to the machine. 
+  Right there on the homepage is a document that is labeled "flag" double clicking on it to open it will allow you to copy the flag from plain text. 
+  
+  
