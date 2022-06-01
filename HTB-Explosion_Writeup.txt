@@ -2,7 +2,7 @@ Hack the Box
 Machine: Explosion
 Part of the Starting Point Tier 0 series
 Difficulty: Very Easy
-**Google Doc link containing screenshots to follow**
+Google Doc link containing screenshots - https://docs.google.com/document/d/1SE6KRX7poN8dSumV2tUR5vLsU4JXy6RNhYVx5cnk29M/edit?usp=sharing
 
 
 Box questions and answers
@@ -49,8 +49,14 @@ Step1:
     
  Step2: 
   Since the lesson of the machine is about RDP and sepcifically the use of the tool xfreerdp we will use the switch we found earlier using the IP address for the target machine as the argument.
+  
+   xfreerdp /v: <target_IP>
   This will prompt us asking for a user name. Since we don't have a user name we will try basics like "user" "admin" administrator" and the like and just see what happens.
-  Entering the user name administrator prompts us for a password, after a few guesses such as "password" "psswd" "admin" the solution was discovered. 
+  
+  Entering the user name administrator prompts us for a password so we know that this is actually a username on the target machine, from this point forward we can bypass entering it every single log in attempt by using the "/u:" switch when entering our command
+  xfreerdp /v:<target_IP> /u:Administrator
+  after a few guesses such as "password" "psswd" "admin" the solution was discovered.
+  
   Simplly press enter when prompted for a password, leaving the field blank, will grant a Remote Desktop to the machine. 
   Right there on the homepage is a document that is labeled "flag" double clicking on it to open it will allow you to copy the flag from plain text. 
   
