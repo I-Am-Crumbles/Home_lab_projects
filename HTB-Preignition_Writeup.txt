@@ -1,0 +1,54 @@
+Hack The Box
+Machine: Preignition 
+Part of the Starting Point Tier 0 series 
+Difficulty: Very Easy
+Google Doc link containing screenshots: https://docs.google.com/document/d/1cVpIecOmPgZcf17nU_sH6DJj1ud88AKJIh69z127dA4/edit?usp=sharing
+
+Box questions and answers
+
+Q1: What is considered to be one of the most essential skills to possess as a Penetration Tester?
+A1: dir busting
+
+Q2: What switch do we use for nmap's scan to spcify that we want to perform version detection?
+A2: -sV
+
+Q3: What service type is identified as running on port 80/tcp in our nmap scan?
+A3: http
+
+Q4: What service name and version of service is running on port 80/tcp in our nmap scan
+A4: nginx 1.14.2
+
+Q5: What is a popular directory busting tool we can use to explore hidden web directories and resources?
+A5: gobuster
+
+Q6: What switch do we use to specify to gobuster we want to perform dir busting specifically?
+A6: dir
+
+Q7: What page is found during our dir busting activities?
+A7: admin/php
+
+Q8: What is the status code reported by gobuster upon finding a successful page?
+A8: 200
+
+Q9: Submit root flag
+A9: 6483bee07c1c1d57f14e5b0717503c73
+
+Step1:
+  Run nmap to check for the answer to question 3 and 4. 
+  nmap -sV <target_IP>
+  We see that the Host is up and tcp port 80 is open and hosting an nginx 1.14.2 webapplication 
+  
+Step 2: 
+  Pretty sure the challenge wants you to enumerate with gobuster based on the questions but I used dirb as a force of habit, the results were the same either way. 
+  This will give the answer to questions 7
+  dirb http://<target_IP>
+  and we see http://<target_IP>/admin.php (code 200) telling us that dirb found an admin login page directory on our target webserver
+  
+  Step 3: 
+    Navigating over to the admin login page we are prompted to enter a user name and password. This was an easy guess on my first try 
+    Username: admin
+    password: admin
+    **It may have not even mattered what was entered 
+    hitting enter/clicking login will generate a webpage containing the flag.
+    
+
