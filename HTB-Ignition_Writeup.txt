@@ -1,0 +1,64 @@
+Hack The Box
+Machine: Ignition
+Part of the Starting point tier 1 series
+Difficulty: Very Easy
+Google Docs Link: https://docs.google.com/document/d/1h_SM4P0LrTTAVVV5R1EE5JzAGGVMPaJqliPordVwv64/edit?usp=sharing
+
+Q1: What service version is found to be running on port 80?
+A1: nginx 1.14.2
+
+Q2: What is the 3-digit HTTP status code returned when you visit the machine?
+A2: 302
+
+Q3: What is the virutal host name the webpage expects to be accessed by?
+A3: ignition.htb
+
+Q4: What is the full path to the file on a linux comptuer that holds a local list of domain name and IP address pairs?
+A4: /etc/hosts
+
+Q5: What is the full URL to the Magento login page?
+A5: http://ignition.htb/admin
+
+Q6: What is the admin password to the Megento login page?
+A6: qwerty123
+
+Q7: Submit root flag
+A7: 797d6c988d9dc5865e010b9410f247e0
+
+Step1: 
+  run nmap -sV to determine the version of the service on port 80 to answer the first question
+  sudo nmap -sV <target_IP>
+  We see that tcp port 80 is open to http traffic and is running nginx 1.14.2
+
+Step2: 
+  I initially try to navigate over to the web page but I was denied. No error code was outright displayed (however the answer to question 3 was)
+  I checked the network tab but the request headers also did not display the error code
+  Checking the hint for the problem reveals we were supposed to use curl
+  curl -v http://<target_IP>
+  This will output a lot of useful information including the error code we were looking for, 302 Found.
+
+Step3: 
+  We next need to edit the /etc/hosts file to contain the <target_IP> <Domain Name> pair
+  in my case I took the following steps on the cammand line
+  sudo vim /etc/hosts 
+  The file will open and then we add "<target_IP> ignition.htb" to the file, save and exit
+  You should now be able to navigate over to the Web application on the iginition machine
+  
+Step4: 
+  Directory busting, this time I chose to give gobuster a try
+  gobuster dir --url http://ignition.htb/ --wordlist /usr/share/dirb/wordlists/common.txt
+  This yielded a few results, all of which can be seen on the google docs version of this write up which contains screenshots.
+  The one we are interested in is /admin which is the answer to Q5.
+  
+Step5:
+  We are given the user name by the requirement of needing to answer question 6. Unfortunately this web application has defenses against brute forcing passwords
+  If too many incorrect attempts are made too quickly you get locked out for a couple of minutes
+  So we have to guess it manually through trial and error
+  Unfortunately the best way to do this is to just google for "Most common admin passwords of 2022" and you will get any number of lists to start working through
+  I personally used https://nordpass.com/most-common-passwords-list/ and the answer was number 48 for the US for all genders "qwerty123"
+  **If you're wondering if I litterally guessed all 48 passwords I did not, this is an old machine so I Just used google at this point. 
+  **However since this is how you would have to do it in real life I outlined the process. 
+  
+Step 6:
+  Once you have guessed the password and logged in the flag is displayed right there on the first page you see.
+  
