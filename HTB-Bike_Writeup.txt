@@ -2,7 +2,7 @@ Hack The Box
 Machine: Bike
 Part of the Starting point tier 1 series
 Difficulty: Very Easy
-Google Docs Link:
+Google Docs Link:https://docs.google.com/document/d/1yAvwkjue1bKtM5jo0LwMJ_tQlydTfpUmJNA6bKSps1I/edit?usp=sharing
 
 Q1: What TCP ports does nmap identify as open? Answer with a list of ports, seperated by commans with no spaces, from low to high
 A1: 22,80
