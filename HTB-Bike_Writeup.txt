@@ -1,0 +1,102 @@
+Hack The Box
+Machine: Bike
+Part of the Starting point tier 1 series
+Difficulty: Very Easy
+Google Docs Link:
+
+Q1: What TCP ports does nmap identify as open? Answer with a list of ports, seperated by commans with no spaces, from low to high
+A1: 22,80
+
+Q2: What software is running the service listening on the http/web port identified in the first question?
+A2: Node.js
+
+Q3: What is the name of the Web Framework according to Wappalyzer
+A3: Express
+
+Q4: What is the name of the vulnerability we test for by submitting {{7*7}}?
+A4: Server Side Template Injection
+
+Q5: What is the templating engine being used within NodeJS?
+A5: Handlebars
+
+Q6: What is the name of the BurpSuite tab used to encode text?
+A6: Decoder
+
+Q7: In order to send special characters in our payload in an HTTP request we'll encode the payload. What type of encoding do we use?
+A7: URL
+
+Q8: When we use a payload from HackTricks to try to run system commands, we get an error back. What is "not defined" in the response error?
+A8: require
+
+Q9: What variable is the name of the top-level scope in NodeJS?
+A9: global
+
+Q10: By exploiting this vulnerability we get command execution as the user that the webserver is running as. What is the name of that user?
+A10: root
+
+Q11: Submit the root flag
+A11: 6b258d726d287462d60c103d0142a81c
+
+
+Step1:
+  Run nmap to check for listening ports and the services running on them to answer the first 2 questions
+  nmap -sV <target_IP> 
+  
+Step2: 
+  Run Wappalyzer to get the answer for questions 3
+  I didn't actually have it installed on the webrowser but I was able to run it on the command line
+  wappalyzer <target_IP>
+  The output is kind of a mess but it's in there
+  
+Step3:
+  Navigate over to the webpage being hosted by the machine so that we can submit the {{7*7}} injection.
+  The answer to questions 5 can be found within the error message that outputs here
+  
+ Step4: 
+  Open Burp Suite and click on the Proxy tab, then click the intercept tab below, with Intercept set to on click on open browswer. 
+  Inside of Burp Suites browser navigate over to the target machines webpage. 
+  You will need to forward the request inside of the project until Burp Suite's broswer displays the target machines homepage
+  From here submit the same {{7*7}} request from earlier so that we can capture it within Burp Suite
+  You will again need to forward the request until the error page from before is displayed.
+  Inside of Burp Suite click on the HTTP History tab click on the packet with the POST request method (there should only be 1 at this point)
+  Press Ctrl+r to send the Post request to the Burp Suite repeater.
+  
+Step5:
+  We need to modify the request to include the payload from the Hint in question 8. 
+  https://book.hacktricks.xyz/pentesting-web/ssti-server-side-template-injection#handlebars-nodejs
+  This webpage will give you some additional information regarding Server Side Template Injection, and exploits related to various tamplaiting engines
+  We are interested in the one the link takes us to directly <Handlebars (NodeJS) specifically the section that says "URL encoded" at the bottom
+  Copy and paste this line into the "email" field (replacing what was already there) in the Burp Suite Repeater and click send
+  This will present us with a Response inside ot the repeater, the body of which will contain and error "require is not defined" answering question 8.
+  
+Step6: 
+  We need to modify the payload so that it doesn't require a child process be loaded specifically the following line
+  {{this.push "return require('child_process').exec('whoami');"}}
+  needs to be changed to this
+  {{this.push "return process;"}}
+  This can easily be done using Burp Suites decoder. by copying the payload from the hack tricks site (leave out the URL encoded section) into the decoder
+  From here we swap out the line above and on the second pull down menu on the right of the decoder it should say "Encode as...", pull it down and select "URL"
+  Now we copy the new URL encoded text and paste that into the "email" field in the repeater and click send.
+  This time we get a response that didn't error. We can click "render" under the "Response" header and see how the webpage loaded
+  
+Step7: 
+  From here we will be modifying the payload some to play around with what does and doesn't work, and see if we can start executing commands through the repeater
+  edit the following line
+  {{this.push "return process;"}}
+  to say
+  {{this.push "return process.mainModule.require('child_process');"}}
+  URL encode and send it through the repeater just like the steps above. We see through use of the "main module" we were able to load the child process with out error
+  So we can start to feed the child process commands through the use of the decoder/repeater and their output should display in the render
+  Once again edit the same line but now it should read
+  {{this.push "return process.mainModule.require('child_process').execSync('whoami');"}}
+  URL encode, replace the string after "email" in the repeater with the new encoded URL and press send 
+  In the rendered response we see "root" which is the output of "whoami" and the answer to question 10
+  
+Step8:
+  So from here we can just repeat the process over and over replacing 'whoami' in our code with any linux command we want to run
+  {{this.push "return process.mainModule.require('child_process').execSync('ls -a /root');"}}
+  This will render to display the contents of the root directory, inside of which we see a file called "flag.txt"
+  So one last modification of the code and we should finally get the root flag to actually display for us in the render
+  {{this.push "return process.mainModule.require('child_process').execSync('cat /root/flag.txt');"}}
+  and there it is. However you can't copy out of the render so click on "Pretty" under the "Response" header and the flag should be displayed in the <body> of the HTML
+  
