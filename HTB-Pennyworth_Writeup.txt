@@ -2,7 +2,7 @@ Hack The Box
 Machine: Pennyworth
 Part of the Starting Point Tier 1 series
 Difficulty: Very Easy
-Google Docs Link: 
+Google Docs Link: https://docs.google.com/document/d/1KPG_IE5S1T6XSIqHsSBtC74Qi8OAkO_TgJieUX2vwl4/edit?usp=sharing
 
 Q1: What does CVE stand for?
 A1: Common Vulnerabilities and exposures
