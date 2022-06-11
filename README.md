@@ -1,8 +1,6 @@
-# Home_lab_projects
-Projects related to the set up and use of my home lab, basically where I will pile everything that's not a scripting project(Those can be found here https://github.com/I-Am-Crumbles/Coding-Scripting_projects) or material related to a specific project.
+# Vulnerable_Box_Writeups
 
-Detailed descriptions of hardware and software set up.
+Detailed Writeups related to all of my attempts at cracking vulnerable boxes. 
 
-Demonstrations of Cybersecurity Red and Blue Team skill sets 
+Google Docs links will contain a version of the writeup with screenshots.
 
-Such as but not limited to Vulnerable box write ups, log analysis, vulnerability scans, kali linux tools, system hardening, and other exploits
