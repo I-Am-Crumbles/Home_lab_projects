@@ -2,7 +2,7 @@ Hack The Box
 Machine: Vaccine
 Part of the starting point tier 2 series
 Difficulty: Very Easy 
-Google Docs:
+Google Docs: https://docs.google.com/document/d/1OUadSgcFt9Fjv1rZ3U2xGd7nPqyphUd3xkudvRt-fKk/edit?usp=sharing
 
 Q1: Besides SSH and HTTP what other service is hosted on this box?
 A1: ftp
