@@ -1,6 +1,4 @@
 # Vulnerable_Box_Writeups
 
-Detailed Writeups related to all of my attempts at cracking vulnerable boxes. 
-
-Google Docs links will contain a version of the writeup with screenshots.
+I no longer use this Repository as I have my blog page located here https://i-am-crumbles.github.io/ which now serves the original purpose. This will remain for the time being incase I ever decide to migrate the work over.
 
